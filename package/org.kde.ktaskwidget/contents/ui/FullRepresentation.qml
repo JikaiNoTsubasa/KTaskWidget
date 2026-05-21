@@ -10,10 +10,10 @@ Item {
     property var api
     property var tasksModel
 
-    Layout.preferredWidth: PlasmaCore.Units.gridUnit * 18
-    Layout.preferredHeight: PlasmaCore.Units.gridUnit * 22
-    Layout.minimumWidth: PlasmaCore.Units.gridUnit * 14
-    Layout.minimumHeight: PlasmaCore.Units.gridUnit * 12
+    Layout.preferredWidth: PlasmaCore.Units.gridUnit * 27
+    Layout.preferredHeight: PlasmaCore.Units.gridUnit * 33
+    Layout.minimumWidth: PlasmaCore.Units.gridUnit * 21
+    Layout.minimumHeight: PlasmaCore.Units.gridUnit * 18
 
     property bool addingTask: false
 
@@ -135,6 +135,13 @@ Item {
             delegate: TaskRow {
                 width: taskList.width
                 api: fullRep.api
+            }
+
+            moveDisplaced: Transition {
+                NumberAnimation { property: "y"; duration: 150; easing.type: Easing.OutQuad }
+            }
+            displaced: Transition {
+                NumberAnimation { property: "y"; duration: 150; easing.type: Easing.OutQuad }
             }
         }
     }

@@ -62,12 +62,22 @@ Item {
         var parsed
         try { parsed = JSON.parse(raw) } catch (e) { parsed = [] }
         if (!Array.isArray(parsed)) parsed = []
+        var normalized = normalizeOrder(parsed)
         taskListModel.clear()
-        var sorted = sortTasks(parsed)
-        for (var i = 0; i < sorted.length; i++) {
-            taskListModel.append(sorted[i])
+        for (var i = 0; i < normalized.length; i++) {
+            taskListModel.append(normalized[i])
         }
         recomputeDoneCount()
+    }
+
+    function normalizeOrder(arr) {
+        var undone = []
+        var done = []
+        for (var i = 0; i < arr.length; i++) {
+            if (arr[i].done) done.push(arr[i])
+            else undone.push(arr[i])
+        }
+        return undone.concat(done)
     }
 
     function saveQueued() {
@@ -88,31 +98,35 @@ Item {
         plasmoid.configuration.tasksJson = JSON.stringify(arr)
     }
 
-    function sortTasks(arr) {
-        return arr.slice().sort(function (a, b) {
-            if (a.done !== b.done) return a.done ? 1 : -1
-            if (a.created < b.created) return -1
-            if (a.created > b.created) return 1
-            return 0
-        })
-    }
-
     function newId() {
         return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
     }
 
+    function firstDoneIndex() {
+        for (var i = 0; i < taskListModel.count; i++) {
+            if (taskListModel.get(i).done) return i
+        }
+        return taskListModel.count
+    }
+
     function addTask(name) {
-        console.log("[ktaskwidget] root.addTask called: " + JSON.stringify(name))
         var clean = (name || "").trim()
         if (clean.length === 0) return
-        taskListModel.append({
+        taskListModel.insert(firstDoneIndex(), {
             id: newId(),
             name: clean,
             done: false,
             created: new Date().toISOString()
         })
-        reSort()
         recomputeDoneCount()
+        saveQueued()
+    }
+
+    function moveTask(fromIdx, toIdx) {
+        if (fromIdx === toIdx) return
+        if (fromIdx < 0 || toIdx < 0) return
+        if (fromIdx >= taskListModel.count || toIdx >= taskListModel.count) return
+        taskListModel.move(fromIdx, toIdx, 1)
         saveQueued()
     }
 
@@ -129,15 +143,28 @@ Item {
     }
 
     function toggleDone(id) {
+        var idx = -1
         for (var i = 0; i < taskListModel.count; i++) {
-            if (taskListModel.get(i).id === id) {
-                taskListModel.setProperty(i, "done", !taskListModel.get(i).done)
-                reSort()
-                recomputeDoneCount()
-                saveQueued()
-                return
-            }
+            if (taskListModel.get(i).id === id) { idx = i; break }
         }
+        if (idx < 0) return
+        var newDone = !taskListModel.get(idx).done
+        taskListModel.setProperty(idx, "done", newDone)
+        var targetIdx
+        if (newDone) {
+            targetIdx = taskListModel.count - 1
+        } else {
+            var firstDone = taskListModel.count
+            for (var j = 0; j < taskListModel.count; j++) {
+                if (j !== idx && taskListModel.get(j).done) { firstDone = j; break }
+            }
+            targetIdx = firstDone > idx ? firstDone - 1 : firstDone
+        }
+        if (targetIdx !== idx && targetIdx >= 0 && targetIdx < taskListModel.count) {
+            taskListModel.move(idx, targetIdx, 1)
+        }
+        recomputeDoneCount()
+        saveQueued()
     }
 
     function removeTask(id) {
@@ -151,21 +178,4 @@ Item {
         }
     }
 
-    function reSort() {
-        var arr = []
-        for (var i = 0; i < taskListModel.count; i++) {
-            var t = taskListModel.get(i)
-            arr.push({
-                id: t.id,
-                name: t.name,
-                done: t.done,
-                created: t.created
-            })
-        }
-        var sorted = sortTasks(arr)
-        taskListModel.clear()
-        for (var j = 0; j < sorted.length; j++) {
-            taskListModel.append(sorted[j])
-        }
-    }
 }
