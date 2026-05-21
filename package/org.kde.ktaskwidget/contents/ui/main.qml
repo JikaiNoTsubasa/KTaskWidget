@@ -28,6 +28,26 @@ Item {
 
     ListModel { id: taskListModel }
 
+    property int doneCount: 0
+
+    function recomputeDoneCount() {
+        var n = 0
+        for (var i = 0; i < taskListModel.count; i++) {
+            if (taskListModel.get(i).done) n++
+        }
+        doneCount = n
+    }
+
+    function clearDone() {
+        for (var i = taskListModel.count - 1; i >= 0; i--) {
+            if (taskListModel.get(i).done) {
+                taskListModel.remove(i)
+            }
+        }
+        recomputeDoneCount()
+        saveQueued()
+    }
+
     Timer {
         id: saveDebounce
         interval: 500
@@ -47,6 +67,7 @@ Item {
         for (var i = 0; i < sorted.length; i++) {
             taskListModel.append(sorted[i])
         }
+        recomputeDoneCount()
     }
 
     function saveQueued() {
@@ -91,6 +112,7 @@ Item {
             created: new Date().toISOString()
         })
         reSort()
+        recomputeDoneCount()
         saveQueued()
     }
 
@@ -111,6 +133,7 @@ Item {
             if (taskListModel.get(i).id === id) {
                 taskListModel.setProperty(i, "done", !taskListModel.get(i).done)
                 reSort()
+                recomputeDoneCount()
                 saveQueued()
                 return
             }
@@ -121,6 +144,7 @@ Item {
         for (var i = 0; i < taskListModel.count; i++) {
             if (taskListModel.get(i).id === id) {
                 taskListModel.remove(i)
+                recomputeDoneCount()
                 saveQueued()
                 return
             }

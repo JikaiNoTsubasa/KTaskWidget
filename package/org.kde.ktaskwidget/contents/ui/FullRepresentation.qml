@@ -55,6 +55,15 @@ Item {
                 PlasmaComponents.ToolTip.delay: 500
             }
 
+            PlasmaComponents.ToolButton {
+                icon.name: "edit-clear-list"
+                enabled: fullRep.api && fullRep.api.doneCount > 0
+                onClicked: fullRep.api.clearDone()
+                PlasmaComponents.ToolTip.text: i18n("Clear completed tasks (%1)", fullRep.api ? fullRep.api.doneCount : 0)
+                PlasmaComponents.ToolTip.visible: hovered
+                PlasmaComponents.ToolTip.delay: 500
+            }
+
             PlasmaComponents.Label {
                 Layout.fillWidth: true
                 text: i18n("Tasks")
