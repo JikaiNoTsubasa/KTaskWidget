@@ -1,27 +1,27 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
+import QtQuick
+import QtQuick.Layouts
+import org.kde.plasma.plasmoid
+import org.kde.kirigami as Kirigami
 
-Item {
+PlasmoidItem {
     id: root
 
-    Plasmoid.preferredRepresentation: Plasmoid.compactRepresentation
-    Plasmoid.switchWidth: PlasmaCore.Units.gridUnit * 12
-    Plasmoid.switchHeight: PlasmaCore.Units.gridUnit * 8
+    preferredRepresentation: compactRepresentation
+    switchWidth: Kirigami.Units.gridUnit * 12
+    switchHeight: Kirigami.Units.gridUnit * 8
 
-    Plasmoid.compactRepresentation: PlasmaCore.IconItem {
-        source: "view-task"
+    compactRepresentation: Kirigami.Icon {
+        source: Plasmoid.icon
         active: compactMouse.containsMouse
         MouseArea {
             id: compactMouse
             anchors.fill: parent
             hoverEnabled: true
-            onClicked: plasmoid.expanded = !plasmoid.expanded
+            onClicked: root.expanded = !root.expanded
         }
     }
 
-    Plasmoid.fullRepresentation: FullRepresentation {
+    fullRepresentation: FullRepresentation {
         api: root
         tasksModel: taskListModel
     }
@@ -58,7 +58,7 @@ Item {
     Component.onCompleted: loadTasks()
 
     function loadTasks() {
-        var raw = plasmoid.configuration.tasksJson || "[]"
+        var raw = Plasmoid.configuration.tasksJson || "[]"
         var parsed
         try { parsed = JSON.parse(raw) } catch (e) { parsed = [] }
         if (!Array.isArray(parsed)) parsed = []
@@ -95,7 +95,7 @@ Item {
                 created: t.created
             })
         }
-        plasmoid.configuration.tasksJson = JSON.stringify(arr)
+        Plasmoid.configuration.tasksJson = JSON.stringify(arr)
     }
 
     function newId() {

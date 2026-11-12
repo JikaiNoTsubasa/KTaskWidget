@@ -1,0 +1,20 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "biehler@s2i-evolution.eu",
+                "Name": "Stephane Biehler Hertzog"
+            }
+        ],
+        "Category": "Utilities",
+        "Description": "Manage daily tasks from the Plasma panel",
+        "Icon": "view-task",
+        "Id": "org.kde.ktaskwidget",
+        "License": "MIT",
+        "Name": "Task Widget",
+        "Version": "0.2",
+        "FormFactors": ["desktop", "horizontal", "vertical"]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

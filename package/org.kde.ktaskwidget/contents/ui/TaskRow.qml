@@ -1,7 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 
 Item {
     id: row
@@ -20,10 +21,10 @@ Item {
         anchors.verticalCenter: row.verticalCenter
 
         width: row.width
-        height: layout.implicitHeight + PlasmaCore.Units.smallSpacing * 2
+        height: layout.implicitHeight + Kirigami.Units.smallSpacing * 2
         radius: 3
         color: gripArea.drag.active
-               ? PlasmaCore.Theme.alternateBackgroundColor
+               ? Kirigami.Theme.alternateBackgroundColor
                : "transparent"
         opacity: gripArea.drag.active ? 0.9 : 1.0
         z: gripArea.drag.active ? 10 : 0
@@ -47,21 +48,21 @@ Item {
         RowLayout {
             id: layout
             anchors.fill: parent
-            anchors.leftMargin: PlasmaCore.Units.smallSpacing
-            anchors.rightMargin: PlasmaCore.Units.smallSpacing
-            anchors.topMargin: PlasmaCore.Units.smallSpacing
-            anchors.bottomMargin: PlasmaCore.Units.smallSpacing
-            spacing: PlasmaCore.Units.smallSpacing
+            anchors.leftMargin: Kirigami.Units.smallSpacing
+            anchors.rightMargin: Kirigami.Units.smallSpacing
+            anchors.topMargin: Kirigami.Units.smallSpacing
+            anchors.bottomMargin: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing
 
             Item {
-                Layout.preferredWidth: PlasmaCore.Units.iconSizes.small
-                Layout.preferredHeight: PlasmaCore.Units.iconSizes.small
+                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                Layout.preferredHeight: Kirigami.Units.iconSizes.small
 
                 PlasmaComponents.Label {
                     anchors.centerIn: parent
                     text: "⋮⋮"
                     opacity: 0.55
-                    font.pixelSize: PlasmaCore.Units.iconSizes.small
+                    font.pixelSize: Kirigami.Units.iconSizes.small
                 }
 
                 MouseArea {
@@ -96,9 +97,9 @@ Item {
                     onDoubleClicked: row.startEdit()
                 }
 
-                PlasmaComponents.ToolTip.text: model.name
-                PlasmaComponents.ToolTip.visible: nameHover.containsMouse && nameLabel.truncated
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: model.name
+                QQC2.ToolTip.visible: nameHover.containsMouse && nameLabel.truncated
+                QQC2.ToolTip.delay: 500
             }
 
             PlasmaComponents.TextField {
@@ -118,17 +119,17 @@ Item {
             PlasmaComponents.ToolButton {
                 icon.name: row.editing ? "dialog-ok" : "document-edit"
                 onClicked: row.editing ? row.commitEdit() : row.startEdit()
-                PlasmaComponents.ToolTip.text: row.editing ? i18n("Save") : i18n("Edit")
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: row.editing ? i18n("Save") : i18n("Edit")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
 
             PlasmaComponents.ToolButton {
                 icon.name: "edit-delete"
                 onClicked: row.api.removeTask(model.id)
-                PlasmaComponents.ToolTip.text: i18n("Delete")
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: i18n("Delete")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
         }
     }

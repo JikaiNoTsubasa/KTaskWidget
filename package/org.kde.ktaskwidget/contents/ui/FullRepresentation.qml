@@ -1,8 +1,8 @@
-import QtQuick 2.15
-import QtQuick.Layouts 1.15
-import org.kde.plasma.plasmoid 2.0
-import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 3.0 as PlasmaComponents
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls as QQC2
+import org.kde.plasma.components as PlasmaComponents
+import org.kde.kirigami as Kirigami
 
 Item {
     id: fullRep
@@ -10,10 +10,10 @@ Item {
     property var api
     property var tasksModel
 
-    Layout.preferredWidth: PlasmaCore.Units.gridUnit * 27
-    Layout.preferredHeight: PlasmaCore.Units.gridUnit * 33
-    Layout.minimumWidth: PlasmaCore.Units.gridUnit * 21
-    Layout.minimumHeight: PlasmaCore.Units.gridUnit * 18
+    Layout.preferredWidth: Kirigami.Units.gridUnit * 27
+    Layout.preferredHeight: Kirigami.Units.gridUnit * 33
+    Layout.minimumWidth: Kirigami.Units.gridUnit * 21
+    Layout.minimumHeight: Kirigami.Units.gridUnit * 18
 
     property bool addingTask: false
 
@@ -26,8 +26,6 @@ Item {
 
     function submitNewTask() {
         var value = newTaskField.text
-        console.log("[ktaskwidget] submitNewTask called, text=" + JSON.stringify(value)
-                    + " api=" + (fullRep.api ? "present" : "NULL"))
         if (!fullRep.api) {
             console.warn("[ktaskwidget] fullRep.api is null — cannot add task")
             return
@@ -40,28 +38,28 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: PlasmaCore.Units.smallSpacing
-        spacing: PlasmaCore.Units.smallSpacing
+        anchors.margins: Kirigami.Units.smallSpacing
+        spacing: Kirigami.Units.smallSpacing
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: PlasmaCore.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing
 
             PlasmaComponents.ToolButton {
                 icon.name: "list-add"
                 onClicked: fullRep.addingTask = !fullRep.addingTask
-                PlasmaComponents.ToolTip.text: i18n("Add task")
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: i18n("Add task")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
 
             PlasmaComponents.ToolButton {
                 icon.name: "edit-clear-list"
                 enabled: fullRep.api && fullRep.api.doneCount > 0
                 onClicked: fullRep.api.clearDone()
-                PlasmaComponents.ToolTip.text: i18n("Clear completed tasks (%1)", fullRep.api ? fullRep.api.doneCount : 0)
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: i18n("Clear completed tasks (%1)", fullRep.api ? fullRep.api.doneCount : 0)
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
 
             PlasmaComponents.Label {
@@ -73,17 +71,17 @@ Item {
 
             PlasmaComponents.ToolButton {
                 icon.name: "window-close"
-                onClicked: plasmoid.expanded = false
-                PlasmaComponents.ToolTip.text: i18n("Close")
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                onClicked: fullRep.api.expanded = false
+                QQC2.ToolTip.text: i18n("Close")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
         }
 
         RowLayout {
             Layout.fillWidth: true
             visible: fullRep.addingTask
-            spacing: PlasmaCore.Units.smallSpacing
+            spacing: Kirigami.Units.smallSpacing
 
             PlasmaComponents.TextField {
                 id: newTaskField
@@ -99,16 +97,16 @@ Item {
                 icon.name: "dialog-ok"
                 enabled: newTaskField.text.trim().length > 0
                 onClicked: fullRep.submitNewTask()
-                PlasmaComponents.ToolTip.text: i18n("Add")
-                PlasmaComponents.ToolTip.visible: hovered
-                PlasmaComponents.ToolTip.delay: 500
+                QQC2.ToolTip.text: i18n("Add")
+                QQC2.ToolTip.visible: hovered
+                QQC2.ToolTip.delay: 500
             }
         }
 
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            color: PlasmaCore.Theme.textColor
+            color: Kirigami.Theme.textColor
             opacity: 0.15
             visible: fullRep.tasksModel && fullRep.tasksModel.count > 0
         }

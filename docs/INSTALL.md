@@ -1,263 +1,378 @@
-# KTaskWidget — Build & Install Guide
+# KTaskWidget — Générer et installer le widget (Kubuntu / Ubuntu 26.04 LTS, Plasma 6)
 
-This widget is **pure QML/JavaScript**. There is no native compilation step — QML is interpreted at runtime by Plasma. "Building" here means **packaging** the source directory into a `.plasmoid` archive (a zip with a specific layout) that Plasma's GUI accepts via *Install Widget from Local File*.
+Ce widget est un plasmoid **100 % QML/JavaScript** : il n'y a **pas de compilation**. Plasma interprète le QML au chargement. « Générer » le widget signifie simplement **empaqueter** le dossier source dans une archive `.plasmoid` (un zip avec une structure précise), ou l'installer directement depuis le dossier source avec `kpackagetool6`.
 
-If you don't need the archive, you can skip straight to [§3 Direct install via kpackagetool5](#3-direct-install-via-kpackagetool5) — it installs the source directory directly.
+> **Version cible** : Ubuntu 26.04.1 LTS avec le bureau KDE Plasma 6 (testé sur Plasma 6.6.6, Qt 6, KDE Frameworks 6).
+> La version Plasma 5 (Kubuntu 24.04 et antérieurs) n'est plus supportée depuis la v0.2 — voir [§10](#10-migration-depuis-la-version-plasma-5).
 
----
+Sommaire :
 
-## 1. Prerequisites
-
-Verify your environment:
-
-| Requirement | Check | Where to get it |
-| --- | --- | --- |
-| **KDE Plasma 5** desktop | `plasmashell --version` should print `5.x` (typically 5.27 on Kubuntu LTS) | Ships with Kubuntu. Not for Plasma 6 — see [Known limitations](IMPLEMENTATION.md#7-known-limitations). |
-| **kpackagetool5** | `which kpackagetool5` | `sudo apt install plasma-framework` |
-| **plasmoidviewer** (dev only) | `which plasmoidviewer` | `sudo apt install plasma-sdk` |
-| **zip** | `which zip` | `sudo apt install zip` |
-| **make** | `which make` | `sudo apt install make` |
-
-One-liner for Kubuntu/Debian users:
-
-```sh
-sudo apt install plasma-framework plasma-sdk zip make
-```
-
-`plasma-sdk` is only needed if you want to use `plasmoidviewer` during development. End users do not need it.
+1. [Prérequis](#1-prérequis)
+2. [Récupérer les sources](#2-récupérer-les-sources)
+3. [Installation rapide](#3-installation-rapide)
+4. [Ajouter le widget au panneau ou au bureau](#4-ajouter-le-widget-au-panneau-ou-au-bureau)
+5. [Générer l'archive `.plasmoid`](#5-générer-larchive-plasmoid)
+6. [Installer l'archive `.plasmoid`](#6-installer-larchive-plasmoid)
+7. [Vérifier l'installation](#7-vérifier-linstallation)
+8. [Mettre à jour le widget](#8-mettre-à-jour-le-widget)
+9. [Désinstaller](#9-désinstaller)
+10. [Migration depuis la version Plasma 5](#10-migration-depuis-la-version-plasma-5)
+11. [Développement](#11-développement)
+12. [Dépannage](#12-dépannage)
+13. [Référence des cibles `make`](#13-référence-des-cibles-make)
 
 ---
 
-## 2. Quick install (recommended for the impatient)
+## 1. Prérequis
 
-From the repo root:
+| Outil | Vérification | Paquet Ubuntu 26.04 | Utilité |
+| --- | --- | --- | --- |
+| **KDE Plasma 6** | `plasmashell --version` → `plasmashell 6.x` | `kubuntu-desktop` (déjà présent sur Kubuntu) | Exécute le widget |
+| **kpackagetool6** | `which kpackagetool6` | `kpackagetool6` | Installe / met à jour / supprime le widget |
+| **make** | `which make` | `make` | Raccourcis de build/installation |
+| **zip** | `which zip` | `zip` | Création de l'archive `.plasmoid` |
+| **python3** | `which python3` | `python3` (présent par défaut) | Validation de `metadata.json` (`make check`) |
+| **plasmoidviewer** *(optionnel, dev)* | `which plasmoidviewer` | `plasma-sdk` | Lancer le widget dans une fenêtre isolée |
+
+Installation en une ligne :
 
 ```sh
-make install
+sudo apt update
+sudo apt install kpackagetool6 make zip
+# Optionnel, uniquement pour développer :
+sudo apt install plasma-sdk
 ```
 
-That's it. The widget is now available in the "Add Widgets" picker. Right-click your panel → **Add Widgets…** → search **Task Widget** → drag onto the panel.
+Vérifiez que vous êtes bien sous Plasma 6 :
 
-If you've installed before and want to refresh after pulling changes, use `make reinstall` (does `remove` then `install`).
+```sh
+plasmashell --version     # doit afficher : plasmashell 6.x.y
+```
+
+> Sous Ubuntu « standard » (GNOME), ce widget ne fonctionne pas : il nécessite une session KDE Plasma (Kubuntu, ou `sudo apt install kubuntu-desktop` puis choix de la session « Plasma » à l'écran de connexion).
 
 ---
 
-## 3. Direct install via kpackagetool5
-
-`make install` is just a wrapper for:
+## 2. Récupérer les sources
 
 ```sh
-kpackagetool5 --type Plasma/Applet --install package/org.kde.ktaskwidget
+git clone <url-du-dépôt> KTaskWidget
+cd KTaskWidget
 ```
 
-This copies the package directory into `~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/`. Plasma scans that directory on its own — no `plasma-restart` needed for the widget to appear in the picker.
+Structure du dépôt :
 
-Other useful operations:
-
-```sh
-# Upgrade an already-installed package (after editing source)
-kpackagetool5 --type Plasma/Applet --upgrade package/org.kde.ktaskwidget
-
-# Uninstall
-kpackagetool5 --type Plasma/Applet --remove org.kde.ktaskwidget
-
-# List all installed applets (useful for confirming install)
-kpackagetool5 --type Plasma/Applet --list | grep ktaskwidget
 ```
-
-The `Makefile` exposes shortcuts: `make upgrade`, `make remove`, `make reinstall`.
+KTaskWidget/
+├── Makefile                         cibles build / install / dev
+├── README.md
+├── docs/
+│   ├── INSTALL.md                   ce document
+│   └── IMPLEMENTATION.md            architecture technique
+└── package/
+    └── org.kde.ktaskwidget/         le plasmoid lui-même
+        ├── metadata.json            manifeste Plasma 6
+        └── contents/
+            ├── config/main.xml      schéma de configuration (stockage des tâches)
+            └── ui/
+                ├── main.qml         racine (PlasmoidItem), modèle et logique CRUD
+                ├── FullRepresentation.qml   popup : barre d'outils + liste
+                └── TaskRow.qml      ligne d'une tâche
+```
 
 ---
 
-## 4. Build the `.plasmoid` archive (for distribution)
+## 3. Installation rapide
 
-If you want to share the widget with someone who won't run `make install` themselves, build a `.plasmoid` archive — Plasma's GUI installer accepts it:
+Depuis la racine du dépôt, **dans un terminal Konsole** (voir [§12](#install-réussie-mais-widget-invisible-piège-du-terminal-snap) si vous utilisez le terminal de VS Code) :
+
+```sh
+make check      # vérifie la structure du paquet (facultatif)
+make install    # installe ou met à jour le widget
+```
+
+`make install` est idempotent :
+
+- si le widget n'est pas installé → `kpackagetool6 --type Plasma/Applet --install package/org.kde.ktaskwidget`
+- s'il est déjà installé → `kpackagetool6 --type Plasma/Applet --upgrade package/org.kde.ktaskwidget`
+- s'il reste une ancienne copie **Plasma 5** (non reconnue par `kpackagetool6`) → elle est supprimée puis remplacée.
+
+Les fichiers sont copiés dans :
+
+```
+~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/
+```
+
+Lors d'une **première** installation, le widget apparaît immédiatement dans le sélecteur de widgets, sans redémarrer Plasma.
+
+---
+
+## 4. Ajouter le widget au panneau ou au bureau
+
+1. Clic droit sur le panneau (ou sur le bureau) → **Ajouter des composants graphiques…** (*Add Widgets…*).
+2. Dans la barre latérale qui s'ouvre, recherchez **Task Widget**.
+3. Glissez-déposez l'entrée sur le panneau ou le bureau (ou double-cliquez dessus).
+
+Utilisation :
+
+- Clic sur l'icône → ouvre / ferme la liste des tâches.
+- **+** : ajouter une tâche (Entrée pour valider, Échap pour annuler).
+- Case à cocher : marquer comme faite (la tâche descend en bas de la liste, barrée).
+- Double-clic sur le nom ou icône crayon : renommer.
+- Corbeille : supprimer une tâche ; icône « vider la liste » : supprimer toutes les tâches terminées.
+- Poignée **⋮⋮** à gauche : glisser pour réordonner.
+
+---
+
+## 5. Générer l'archive `.plasmoid`
+
+Pour distribuer le widget à quelqu'un qui n'a pas les sources ni `make` :
 
 ```sh
 make package
 ```
 
-This produces `ktaskwidget.plasmoid` in the repo root. Under the hood:
+Cela produit `ktaskwidget.plasmoid` à la racine du dépôt. En coulisses :
 
 ```sh
-cd package/org.kde.ktaskwidget && zip -r ../../ktaskwidget.plasmoid .
+cd package/org.kde.ktaskwidget && zip -r ../../ktaskwidget.plasmoid . -x "*.bak" "*~"
 ```
 
-**Important**: the zip must contain `metadata.desktop` at its **root**, not nested inside an extra directory. The `cd` into the package directory before `zip` is what guarantees this. If you build the archive by hand, double-check with `unzip -l ktaskwidget.plasmoid` — the first entry should be `metadata.desktop`, not `org.kde.ktaskwidget/metadata.desktop`.
-
-### Install the `.plasmoid` archive via the Plasma GUI
-
-1. Right-click your desktop or any panel → **Add Widgets…**
-2. At the bottom of the panel that opens, click **Get New Widgets** → **Install Widget from Local File…**
-3. In the file picker, choose `ktaskwidget.plasmoid`.
-4. Plasma will respond with a small confirmation. The widget now appears in the widget picker as **Task Widget** — drag it onto a panel.
-
-### Install the `.plasmoid` archive from the command line
-
-If you have the archive but not the source:
+**Important** : `metadata.json` doit se trouver **à la racine** de l'archive, pas dans un sous-dossier. Vérifiez avec :
 
 ```sh
-kpackagetool5 --type Plasma/Applet --install ktaskwidget.plasmoid
+unzip -l ktaskwidget.plasmoid
 ```
 
-`kpackagetool5` accepts either a directory or a `.plasmoid` archive.
+La liste doit contenir `metadata.json` et `contents/...`, **pas** `org.kde.ktaskwidget/metadata.json`.
+
+La cible ne reconstruit l'archive que si un fichier source a changé. Pour forcer : `make clean package`.
 
 ---
 
-## 5. Verify the install
+## 6. Installer l'archive `.plasmoid`
 
-After installing, confirm the widget is registered:
+### 6.1 Via l'interface graphique de Plasma
 
-```sh
-kpackagetool5 --type Plasma/Applet --list | grep ktaskwidget
-```
+1. Clic droit sur le bureau ou un panneau → **Ajouter des composants graphiques…**
+2. En haut de la barre latérale, cliquez sur **Obtenir de nouveaux composants graphiques** → **Installer un composant graphique depuis un fichier local…**
+3. Sélectionnez `ktaskwidget.plasmoid`.
+4. Une confirmation s'affiche ; **Task Widget** est maintenant disponible dans la liste (voir [§4](#4-ajouter-le-widget-au-panneau-ou-au-bureau)).
 
-Expected output:
-
-```
-org.kde.ktaskwidget
-```
-
-You can also check the install directory:
+### 6.2 En ligne de commande
 
 ```sh
+kpackagetool6 --type Plasma/Applet --install ktaskwidget.plasmoid
+# ou, si une version est déjà installée :
+kpackagetool6 --type Plasma/Applet --upgrade ktaskwidget.plasmoid
+```
+
+`kpackagetool6` accepte indifféremment un dossier ou une archive `.plasmoid`.
+
+---
+
+## 7. Vérifier l'installation
+
+```sh
+kpackagetool6 --type Plasma/Applet --list | grep ktaskwidget
+# → org.kde.ktaskwidget
+
+kpackagetool6 --type Plasma/Applet --show org.kde.ktaskwidget
+# → Name: Task Widget, Path: /home/<vous>/.local/share/plasma/plasmoids/org.kde.ktaskwidget/
+
 ls ~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/
+# → contents  metadata.json
 ```
 
-Expected to contain `metadata.desktop` and `contents/`.
-
-Finally, open the widget picker (right-click panel → **Add Widgets…**) and search for **Task Widget**. If it doesn't appear, see [§8 Troubleshooting](#8-troubleshooting).
+Le chemin affiché par `--show` doit être sous `~/.local/share/`, **pas** sous `~/snap/...`.
 
 ---
 
-## 6. Updating an installed widget
+## 8. Mettre à jour le widget
 
-The package files on disk and the running widget instance are two separate things. Updating requires touching both.
+Les fichiers sur disque et l'instance qui tourne dans `plasmashell` sont deux choses distinctes : il faut mettre à jour les deux.
 
-### Step 1 — refresh the on-disk package
-
-```sh
-make install
-```
-
-The `install` target is idempotent: if `kpackagetool5` already knows about `org.kde.ktaskwidget`, it runs `--upgrade` (rewriting `~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/`) instead of `--install`. So a single `make install` is the right command whether it's the first time or the tenth.
-
-If you want to be explicit, `make upgrade` does only the upgrade path, and `make reinstall` does `remove` + `install`.
-
-### Step 2 — reload the running instance
-
-`kpackagetool5 --upgrade` rewrites the files on disk but the running plasmashell process keeps the **previously loaded QML Components in memory**. Removing and re-adding the widget from the panel does **not** force a reload — it just instantiates a new Item from the cached Component. To pick up code changes you have to make plasmashell re-read the files. Choose one:
-
-| Method | How | When to use |
-| --- | --- | --- |
-| **Restart plasmashell (recommended)** | From a **Konsole** (not VS Code's snap terminal): `kquitapp5 plasmashell && kstart5 plasmashell` | **Required for any QML/JS, `metadata.desktop`, `config/main.xml`, or icon change.** Panel blanks for ~1 s. |
-| **Log out / log in** | Standard KDE session restart. | Same effect as the above. Slower. Use if `kquitapp5` doesn't behave. |
-| **Re-add from panel** | Right-click the widget → **Remove**; right-click panel → **Add Widgets…** → drag **Task Widget** back. | **Only useful when the widget's runtime state is wedged** (e.g. broken ListModel, stuck signal handler). Does **not** pick up code changes. |
-
-**For the dev loop, prefer `make dev` (`plasmoidviewer`) over reinstalling — `plasmoidviewer` re-reads QML on every launch, so there is no cache to clear.**
-
-### Step 3 — verify the update took effect
-
-If you have any doubt the running widget is on the new version, add a unique log line in `main.qml`'s `Component.onCompleted` (e.g. `console.log("[ktaskwidget] loaded vN")`), do steps 1–2, then watch:
+### Étape 1 — mettre à jour les fichiers
 
 ```sh
-journalctl --user -f _COMM=plasmashell
+git pull          # si besoin
+make install      # fait un --upgrade si déjà installé
 ```
 
-You should see your log line each time a widget instance is created. Remove the log line afterwards.
+### Étape 2 — recharger Plasma
 
-Your existing tasks are preserved across updates — they live in `~/.config/plasma-org.kde.plasma.desktop-appletsrc`, independent of the plasmoid package files.
+`plasmashell` garde en mémoire le QML déjà chargé. Retirer puis réajouter le widget **ne suffit pas** à charger le nouveau code. Il faut redémarrer `plasmashell` :
+
+```sh
+make restart
+# équivalent à : systemctl --user restart plasma-plasmashell.service
+```
+
+Le panneau et le bureau disparaissent environ une seconde, puis reviennent. Les fenêtres ouvertes ne sont pas affectées.
+
+Alternative si `systemctl` ne convient pas : `kquitapp6 plasmashell && kstart plasmashell`, ou simplement se déconnecter / se reconnecter.
+
+### Étape 3 — vérifier
+
+```sh
+make logs
+```
+
+suit le journal de `plasmashell` filtré sur `ktaskwidget`. Aucune ligne d'erreur ne doit apparaître à l'ouverture du widget.
+
+**Vos tâches sont conservées** lors des mises à jour : elles sont stockées dans la configuration Plasma (voir [§9](#9-désinstaller)), pas dans les fichiers du paquet.
 
 ---
 
-## 7. Development workflow
+## 9. Désinstaller
 
-Once the prerequisites are installed, the fastest iteration loop is:
-
-```sh
-make dev
-```
-
-That runs `plasmoidviewer -a package/org.kde.ktaskwidget`, which launches the widget in a standalone window directly from the source directory. QML changes are picked up on each relaunch — no install step required. Persistence works the same way (`plasmoid.configuration` writes to `~/.config/plasma-org.kde.plasma.desktop-appletsrc`), so tasks added in `plasmoidviewer` survive across runs and are visible to panel-installed copies of the widget.
-
-When you change `metadata.desktop` itself, `plasmoidviewer` re-reads it on each launch, but a panel-installed copy needs `make upgrade` (or `make reinstall`) followed by a Plasma reload:
-
-```sh
-kquitapp5 plasmashell && kstart5 plasmashell
-```
-
-This is only necessary after metadata changes — pure QML/JS edits are picked up on next widget instantiation.
-
----
-
-## 8. Troubleshooting
-
-### "Task Widget" doesn't appear in the widget picker
-
-1. Confirm the install: `kpackagetool5 --type Plasma/Applet --list | grep ktaskwidget`. If absent, re-run `make install` and watch for errors.
-2. Reload plasmashell: `kquitapp5 plasmashell && kstart5 plasmashell`.
-3. If `kpackagetool5 --install` succeeded but the widget is still missing, the most likely cause is a syntax error in `metadata.desktop`. Run it through:
-
-   ```sh
-   desktop-file-validate package/org.kde.ktaskwidget/metadata.desktop
-   ```
-
-   Fix any warnings, then `make reinstall`.
-
-### "Could not load metadata.desktop" or the widget shows a red error icon
-
-The QML failed to load. Run it under `plasmoidviewer` to see the parser/runtime error:
-
-```sh
-make dev
-```
-
-Errors are printed to stderr. Common causes: a missing import, a typo in a property name, or an unbound `id` reference.
-
-### Tasks aren't persisting across panel reloads
-
-1. Confirm the config key exists after you add a task:
-
-   ```sh
-   grep -A 1 tasksJson ~/.config/plasma-org.kde.plasma.desktop-appletsrc
-   ```
-
-   If `tasksJson=` is missing, the `contents/config/main.xml` schema isn't being picked up — verify the file exists and contains the `<entry name="tasksJson" …>` element, then `make reinstall`.
-
-2. If the value is being written but doesn't reappear on reload, check stderr from `plasmoidviewer` for JSON parse errors in `loadTasks()`.
-
-### `make install` fails with "package already exists"
-
-You have an older copy installed. Use `make reinstall` (which removes first) or `make upgrade`.
-
-### "Install Widget from Local File…" rejects the `.plasmoid` archive
-
-The zip layout is wrong. Verify with `unzip -l ktaskwidget.plasmoid` — the listing must show `metadata.desktop` at the top level, not nested. If nested, rebuild with `make clean && make package`.
-
-### `kpackagetool5: command not found`
-
-Install Plasma's package framework: `sudo apt install plasma-framework`. On non-Debian distributions, the package may be named `plasma5-frameworks-data` or similar — check your distro's package index.
-
-### Install succeeded but the widget never appears in the picker (VS Code snap trap)
-
-If you ran `make install` from VS Code's **integrated terminal** and VS Code is installed via **snap**, the snap sandbox sets `XDG_DATA_HOME=$HOME/snap/code/<rev>/.local/share`. `kpackagetool5` honors that env var, so the widget gets installed into the snap's confined `$HOME` — a path plasmashell never reads. Symptoms: `make install` prints "Successfully installed", `kpackagetool5 --show org.kde.ktaskwidget` reports a path under `~/snap/code/<rev>/...`, but the widget is missing from "Add Widgets…".
-
-The `Makefile` in this repo forces `XDG_DATA_HOME=$HOME/.local/share` to dodge this — so re-running `make install` from any shell should work. If you somehow bypassed it (e.g. invoked `kpackagetool5` by hand), fix it with:
-
-```sh
-XDG_DATA_HOME=$HOME/.local/share kpackagetool5 --type Plasma/Applet --install package/org.kde.ktaskwidget
-```
-
-You can leave the stale snap-confined copy in place — plasmashell ignores it.
-
----
-
-## 9. Uninstall
+1. Retirez d'abord le widget du panneau : clic droit sur l'icône → **Supprimer** (*Remove*). Cela efface aussi ses tâches.
+2. Puis supprimez le paquet :
 
 ```sh
 make remove
+# équivalent à : kpackagetool6 --type Plasma/Applet --remove org.kde.ktaskwidget
 ```
 
-Equivalent to `kpackagetool5 --type Plasma/Applet --remove org.kde.ktaskwidget`. This removes the package directory from `~/.local/share/plasma/plasmoids/` and unregisters it from the widget picker.
+Si vous désinstallez le paquet **sans** retirer le widget du panneau, les tâches restent dans `~/.config/plasma-org.kde.plasma.desktop-appletsrc` (clé `tasksJson`) et réapparaîtront si vous réinstallez.
 
-The config (your tasks) is **not** removed automatically — it lives in `~/.config/plasma-org.kde.plasma.desktop-appletsrc` under the panel/desktop containment that hosted the widget. If you re-install later and add the widget back, your tasks will reappear. To wipe them, remove the widget from the panel before uninstalling, or manually edit the config file.
+### Sauvegarder ses tâches
+
+```sh
+grep tasksJson ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+```
+
+affiche la liste des tâches au format JSON. Copiez ce fichier pour une sauvegarde complète.
+
+---
+
+## 10. Migration depuis la version Plasma 5
+
+Si vous passez d'une Kubuntu antérieure (Plasma 5) à Ubuntu 26.04 (Plasma 6) :
+
+- L'ancien paquet installé (`~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/` contenant `metadata.desktop`) n'est **plus reconnu** par Plasma 6 : le widget apparaît alors en erreur ou vide sur le panneau, et `kpackagetool6 --upgrade` répond « Plugin org.kde.ktaskwidget is not installed ».
+- Il suffit de lancer, depuis ce dépôt à jour :
+
+  ```sh
+  make install    # détecte et remplace la copie Plasma 5
+  make restart
+  ```
+
+- L'identifiant du plugin (`org.kde.ktaskwidget`) et la clé de configuration (`tasksJson`) sont inchangés : **le widget déjà placé sur le panneau et ses tâches sont conservés**.
+
+Résumé des changements techniques de la v0.2 (détails dans [IMPLEMENTATION.md](IMPLEMENTATION.md#7-plasma-6-port-notes)) :
+
+| Plasma 5 (v0.1) | Plasma 6 (v0.2) |
+| --- | --- |
+| `metadata.desktop` | `metadata.json` |
+| `kpackagetool5` | `kpackagetool6` |
+| Racine `Item` + propriétés attachées `Plasmoid.*` | Racine `PlasmoidItem` |
+| `PlasmaCore.Units`, `PlasmaCore.Theme` | `Kirigami.Units`, `Kirigami.Theme` |
+| `PlasmaCore.IconItem` | `Kirigami.Icon` |
+| `kquitapp5 plasmashell && kstart5 plasmashell` | `systemctl --user restart plasma-plasmashell.service` |
+
+---
+
+## 11. Développement
+
+Boucle de développement la plus rapide (nécessite `plasma-sdk`) :
+
+```sh
+make dev
+# équivalent à : plasmoidviewer --applet package/org.kde.ktaskwidget
+```
+
+`plasmoidviewer` charge le widget directement depuis le dossier source dans une fenêtre séparée : chaque relance relit le QML, sans installation ni redémarrage de Plasma. Les erreurs QML s'affichent dans le terminal.
+
+Pour tester dans le vrai panneau :
+
+```sh
+make install restart
+make logs
+```
+
+Test manuel recommandé après chaque modification :
+
+1. Ouvrir le widget → « No tasks yet » sur une liste vide.
+2. **+**, saisir une tâche, Entrée → la tâche apparaît.
+3. Cocher → la tâche est barrée et descend en bas.
+4. Double-cliquer le nom → édition, Entrée → nom mis à jour ; Échap → annulation.
+5. Glisser une tâche par sa poignée → l'ordre change.
+6. Bouton « vider » → les tâches terminées disparaissent.
+7. `make restart` → les tâches sont toujours là.
+
+---
+
+## 12. Dépannage
+
+### « Task Widget » n'apparaît pas dans la liste des widgets
+
+1. `kpackagetool6 --type Plasma/Applet --list | grep ktaskwidget` — si absent, relancez `make install` et lisez les erreurs.
+2. `make check` — vérifie que `metadata.json` est un JSON valide.
+3. `make restart`.
+
+### Le widget affiche une icône d'erreur ou un message « … could not be loaded »
+
+Le QML ne se charge pas. Pour voir l'erreur :
+
+```sh
+make dev                                  # si plasma-sdk est installé
+# ou
+journalctl --user -b -o cat | grep -i ktaskwidget
+```
+
+Cause la plus fréquente après une mise à niveau d'Ubuntu : l'ancienne copie Plasma 5 est encore installée → voir [§10](#10-migration-depuis-la-version-plasma-5).
+
+### `Error: Plugin org.kde.ktaskwidget is not installed.` lors d'un `--upgrade`
+
+Le dossier existe mais contient une version Plasma 5 que `kpackagetool6` ne reconnaît pas. Utilisez `make install` (qui gère ce cas) ou supprimez manuellement `~/.local/share/plasma/plasmoids/org.kde.ktaskwidget/` puis réinstallez.
+
+### Les modifications du code ne sont pas prises en compte
+
+Vous avez oublié de redémarrer `plasmashell` : `make restart` (voir [§8](#8-mettre-à-jour-le-widget)).
+
+### Les tâches ne sont pas sauvegardées
+
+```sh
+grep -A1 tasksJson ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+```
+
+Si la clé est absente après avoir ajouté une tâche, vérifiez que `contents/config/main.xml` est présent dans le paquet installé, puis `make reinstall restart`. La sauvegarde est différée de 500 ms après chaque modification.
+
+### L'archive `.plasmoid` est refusée par l'installation graphique
+
+Structure incorrecte : `unzip -l ktaskwidget.plasmoid` doit montrer `metadata.json` à la racine. Reconstruisez avec `make clean package`.
+
+### `kpackagetool6: command not found`
+
+```sh
+sudo apt install kpackagetool6
+```
+
+### Install réussie mais widget invisible (piège du terminal snap)
+
+Si `make` / `kpackagetool6` est lancé depuis le terminal intégré de **VS Code installé en snap**, la variable `XDG_DATA_HOME` pointe vers `~/snap/code/<rev>/.local/share`, un dossier que Plasma ne lit jamais. Le `Makefile` force `XDG_DATA_HOME=$HOME/.local/share` pour éviter ce piège. Si vous appelez `kpackagetool6` à la main depuis un tel terminal :
+
+```sh
+XDG_DATA_HOME=$HOME/.local/share kpackagetool6 --type Plasma/Applet --install package/org.kde.ktaskwidget
+```
+
+De même, `make restart` doit de préférence être lancé depuis Konsole.
+
+---
+
+## 13. Référence des cibles `make`
+
+| Cible | Action |
+| --- | --- |
+| `make help` | Liste les cibles |
+| `make check` | Vérifie la présence de `metadata.json` (JSON valide), `main.qml` et `main.xml` |
+| `make package` | Génère `ktaskwidget.plasmoid` |
+| `make install` | Installe, ou met à jour si déjà installé (remplace une copie Plasma 5) |
+| `make upgrade` | `kpackagetool6 --upgrade` uniquement |
+| `make remove` | Désinstalle le paquet |
+| `make reinstall` | `remove` puis `install` |
+| `make restart` | Redémarre `plasmashell` pour charger le nouveau code |
+| `make dev` | Lance le widget dans `plasmoidviewer` |
+| `make logs` | Suit le journal de `plasmashell` filtré sur le widget |
+| `make clean` | Supprime l'archive générée |
